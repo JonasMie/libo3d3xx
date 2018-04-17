@@ -11,7 +11,7 @@ else()
   set(CPACK_INSTALL_PREFIX "/usr" CACHE STRING "CPack install prefix")
 endif()
 
-set(CMAKE_BUILD_TYPE Release) # Release or Debug
+set(CMAKE_BUILD_TYPE Debug) # Release or Debug
 
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
@@ -19,7 +19,6 @@ option(BUILD_STATIC_LIBS "Build static libraries" ON)
 option(BUILD_EXE_VERSION "Build o3d3xx-version" ON)
 option(BUILD_EXE_RESET "Build o3d3xx-reset" ON)
 option(BUILD_EXE_LS "Build o3d3xx-ls" ON)
-option(BUILD_EXE_TRACE "Build o3d3xx-trace" ON)
 option(BUILD_EXE_DUMP "Build o3d3xx-dump" ON)
 option(BUILD_EXE_CONFIG "Build o3d3xx-config" ON)
 option(BUILD_EXE_RM "Build o3d3xx-rm" ON)
@@ -28,7 +27,7 @@ option(BUILD_EXE_IMAGER_TYPES "Build o3d3xx-imager-types" ON)
 option(BUILD_EXE_IFM_IMPORT "Build o3d3xx-ifm-import" ON)
 option(BUILD_EXE_IFM_EXPORT "Build o3d3xx-ifm-export" ON)
 
-set(TARGET_IP "192.168.0.68")
+set(TARGET_IP "169.254.65.54")
 set(TARGET_USER "lovepark")
 set(TARGET_DIR "/home/lovepark/debs/")
 

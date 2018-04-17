@@ -20,7 +20,8 @@ get_filename_component(
 
 # kind of hacky
 include(
- "${O3D3XX_CAMERA_LIBRARY_DIR}/o3d3xx_camera/o3d3xx_camera-config-version.cmake"
+"/home/pi/Projects/libo3d3xx/modules/camera/o3d3xx_camera-config-version.cmake"
+ # "${O3D3XX_CAMERA_LIBRARY_DIR}/o3d3xx_camera/o3d3xx_camera-config-version.cmake"
  )
 
 include(FindPackageHandleStandardArgs)

@@ -42,7 +42,7 @@ public:
       description_(descr)
   {}
 
-    float change_threshold = 0.952;
+    float change_threshold = 0.96;
 
   void Run()
   {
@@ -50,10 +50,10 @@ public:
     int win_h = 600;
 
     int noChangeCount = 10;
-    cv::Mat CurrMat;		//Current Matrix (t=0)
-    cv::Mat last1Mat;		//t-1 Matrix
-    cv::Mat last2Mat;		//t-2 Matrix
-    cv::Mat refMat;		//Reference Matrix
+    cv::Mat CurrMat;		//Current Matrix
+    cv::Mat FolloMat;		//following Matrix
+    //cv::Mat LastMat;
+    cv::Mat TempMat;		//Temp Matrix
     cv::Mat SubMat;		//Subtract Matrix = |CurrMat - FolloMat|
     cv::Mat SubRefMat;		//Subtract Temp Matrix = |CurrMat - TempMat|
     cv::Mat XYZMat;
@@ -65,8 +65,6 @@ public:
     int countloop = 0; 		//Counting 'No Change' loops
     bool change = false;
     bool tempchange = false;	
-
-    int frameCount = 0;
 
     
 
@@ -134,7 +132,6 @@ public:
 
 
     bool is_first = true;
-    bool is_second = true;
     while (! pclvis_->wasStopped())
       {
 	
@@ -147,7 +144,7 @@ public:
 	
 	
 	// Initial pcd
-	//pcl::io::savePCDFileASCII("/home/pi/Desktop/point_cloud_right.pcd", *(buff->Cloud()));
+	pcl::io::savePCDFileASCII("/home/pi/Desktop/point_cloud_right.pcd", *(buff->Cloud()));
 
 	// aktuelle matrix in variable speichern
 
@@ -164,35 +161,40 @@ public:
           {
             is_first = false;
             pclvis_->addPointCloud(buff->Cloud(), color_handler, "cloud");
-	    CurrMat.copyTo(refMat);
-	    CurrMat.copyTo(last2Mat);
+	    CurrMat.copyTo(TempMat);
           }
-	else if (is_second){
-	   is_second = false;
-	   CurrMat.copyTo(last1Mat);
-	}
         else
           {
-
 	// methode aufrufen
-	MeanMat = (CurrMat + last1Mat + last2Mat)/ 3.0f;
-	SubMat = MeanMat - CurrMat;  //  |MeanMatrix - FollowingMatrix| = SubtractMatrix
 	
+//	check = MyCompare(CurrMat,FolloMat);
+
+/*	
+	std::cout << type2str(CurrMat.type()) << std::endl;
+	cv::Scalar MeanScalar = cv::mean(CurrMat, FolloMat);	
+	cv::Mat MeanMat (CurrMat.rows, CurrMat.cols, CV_16UC1, &MeanScalar);
+*/
 	
-	SubRefMat = refMat - MeanMat; // |RefMatrix - MeanMatrix| = SubtractMatrix
+	cv::add(CurrMat, FolloMat, MeanMat);
+	MeanMat = MeanMat/ 2.0f;
 
-        pclvis_->updatePointCloud(buff->Cloud(), color_handler, "cloud");
+	cv::subtract(MeanMat, FolloMat, SubMat);	// |MeanMatrix - FollowingMatrix| = SubtractMatrix
+	
+	SubRefMat = TempMat - MeanMat;
+	// cv::subtract(TempMat, CurrMat, SubRefMat);	// |CurrentMatrix - TempMatrix| = SubtractMatrix
 
+
+            pclvis_->updatePointCloud(buff->Cloud(), color_handler, "cloud");
+          }
 
 	// aktuelle matrix in global var speichern
-	
-	last1Mat.copyTo(last2Mat);
-	CurrMat.copyTo(last1Mat);
 
-	std::cout<< "Check current and mean matrix" << std::endl;;
+	CurrMat.copyTo(FolloMat);
+
+	std::cout<< "Check current and following matrix" << std::endl;;
 	change = ChangeDetection(SubMat);
 	
-	std::cout<< "Check current and ref matrix" << std::endl;;
+	std::cout<< "Check current and temp matrix" << std::endl;;
 	tempchange = ChangeDetection(SubRefMat);
 
 	
@@ -229,13 +231,14 @@ public:
 		std::cout<< "*******************************" << std::endl << std::endl;;
 		std::cout<< "Snapshot" << std::endl << std::endl;
 		std::cout<< "*******************************" << std::endl;
-		CurrMat.copyTo(refMat);
+		CurrMat.copyTo(TempMat);
 		
 		std::cout << "Saving file to point_cloud.pcd" << std::endl;
 		pcl::io::savePCDFileASCII("/home/pi/Desktop/point_cloud.pcd", *(buff->Cloud()));
 		
 	}
-	}       
+
+		
 
         //------------
         // 2D images

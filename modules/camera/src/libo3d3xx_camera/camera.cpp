@@ -41,9 +41,9 @@
 #include "o3d3xx_camera/version.h"
 
 const std::string o3d3xx::DEFAULT_PASSWORD = "";
-const std::string o3d3xx::DEFAULT_IP =
-  std::getenv("O3D3XX_IP") == nullptr ?
-  "192.168.0.69" : std::string(std::getenv("O3D3XX_IP"));
+const std::string o3d3xx::DEFAULT_IP = "169.254.65.54";
+ // std::getenv("O3D3XX_IP") == nullptr ?
+ // "192.168.0.69" : std::string(std::getenv("O3D3XX_IP"));
 
 const std::string o3d3xx::DEFAULT_SUBNET = "255.255.255.0";
 const std::string o3d3xx::DEFAULT_GW = "192.168.0.201";
@@ -214,24 +214,6 @@ o3d3xx::Camera::Reboot(const boot_mode& mode)
   this->_XCallMain("reboot", static_cast<int>(mode));
 }
 
-
-std::vector<std::string>
-o3d3xx::Camera::GetTraceLogs(int count)
-{
-  xmlrpc_c::value_array result(this->_XCallMain("getTraceLogs",count));
-  std::vector<xmlrpc_c::value> const res_vec(result.vectorValueValue());
-
-  std::vector<std::string> retval;
-  for (auto& entry : res_vec)
-    {
-      xmlrpc_c::value_string const entry_str(entry);
-      retval.push_back(static_cast<std::string>(entry_str));
-    }
-  return retval;
-}
-
-
-
 std::string
 o3d3xx::Camera::RequestSession()
 {
@@ -293,9 +275,8 @@ o3d3xx::Camera::SetTemporaryApplicationParameters(
     {
       std::pair<std::string, xmlrpc_c::value> member;
 
-      if ((kv.first == "imager_001/ExposureTime") ||
-          (kv.first == "imager_001/ExposureTimeRatio") ||
-          (kv.first == "imager_001/Channel"))
+      if ((kv.first == "ExposureTime") ||
+          (kv.first == "ExposureTimeRatio"))
         {
           member =
             std::make_pair(kv.first, xmlrpc_c::value_int(std::stoi(kv.second)));

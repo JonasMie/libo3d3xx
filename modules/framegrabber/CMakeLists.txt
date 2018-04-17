@@ -11,7 +11,7 @@ else()
   set(CPACK_INSTALL_PREFIX "/usr" CACHE STRING "CPack install prefix")
 endif()
 
-set(CMAKE_BUILD_TYPE Release) # Release or Debug
+set(CMAKE_BUILD_TYPE Debug) # Release or Debug
 
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)

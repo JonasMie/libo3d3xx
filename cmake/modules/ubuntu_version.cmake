@@ -17,7 +17,8 @@ function(get_ubuntu_version VERSION_STRING)
       MESSAGE(WARNING "Could not read: " ${ETC_ISSUE})
     endif()
   endif()
-
+	
+ set(UBUNTU_VERSION "16.04")
   string(REPLACE "." ";" UBUNTU_VERSION_LIST ${UBUNTU_VERSION})
   list(LENGTH UBUNTU_VERSION_LIST vlen)
   if(NOT (vlen LESS 3))
