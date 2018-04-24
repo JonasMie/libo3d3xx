@@ -2,6 +2,8 @@ project(O3D3XX_IMAGE)
 cmake_minimum_required(VERSION 2.8.12)
 set(O3D3XX_IMAGE_MODULE_NAME "libo3d3xx-image")
 
+find_package(PkgConfig REQUIRED)
+
 set(CPACK_SET_DESTDIR true)
 if(NOT CMAKE_CROSSCOMPILING)
   set(CMAKE_INSTALL_PREFIX "/usr" CACHE STRING "CMake install prefix")
@@ -11,7 +13,7 @@ else()
   set(CPACK_INSTALL_PREFIX "/usr" CACHE STRING "CPack install prefix")
 endif()
 
-set(CMAKE_BUILD_TYPE Release) # Release or Debug
+set(CMAKE_BUILD_TYPE Debug) # Release or Debug
 
 option(FORCE_OPENCV2 "Force the build to require OpenCV 2.4" OFF)
 option(BUILD_TESTS "Build unit tests" ON)
@@ -26,6 +28,12 @@ endif(NOT CMAKE_CROSSCOMPILING)
 set(TARGET_IP "192.168.0.68")
 set(TARGET_USER "lovepark")
 set(TARGET_DIR "/home/lovepark/debs/")
+
+
+#find_package(PythonLibs REQUIRED)
+#include_directories(${PYTHON_INCLUDE_DIRS})
+#target_link_libraries
+
 
 ################################################
 ################################################
@@ -80,9 +88,9 @@ find_package(o3d3xx_camera ${O3D3XX_VERSION_STRING} EXACT REQUIRED)
 find_package(o3d3xx_framegrabber ${O3D3XX_VERSION_STRING} EXACT REQUIRED)
 
 # PCL
-find_package(PCL 1.7 REQUIRED COMPONENTS common)
+find_package(PCL 1.7 REQUIRED COMPONENTS common io)
 if (BUILD_EXE_VIEWER)
-  find_package(PCL 1.7 REQUIRED COMPONENTS visualization)
+  find_package(PCL 1.7 REQUIRED COMPONENTS visualization  common)
   if(NOT (UBUNTU_VERSION VERSION_LESS "16.04"))
     # https://bugs.launchpad.net/ubuntu/+source/vtk6/+bug/1573234
     list(REMOVE_ITEM PCL_VISUALIZATION_LIBRARIES "vtkproj4")
@@ -90,6 +98,10 @@ if (BUILD_EXE_VIEWER)
 
   find_package(Boost REQUIRED COMPONENTS program_options system)
 endif(BUILD_EXE_VIEWER)
+
+if(NOT (UBUNTU_VERSION VERSION_LESS "16.04"))
+    list(REMOVE_ITEM PCL_IO_LIBRARIES "vtkproj4")
+endif()
 
 # OpenCV 2/3 support
 if(NOT CMAKE_CROSSCOMPILING)
@@ -121,6 +133,15 @@ else()
 endif(NOT CMAKE_CROSSCOMPILING)
 MESSAGE(STATUS "OpenCV_DIR: " ${OpenCV_DIR})
 
+
+# cURLpp
+
+find_package(CURL REQUIRED)
+include_directories(${CURL_INCLUDE_DIRS})
+
+set(CURLPP_DIR "/home/pi/Projects/curlpp")
+pkg_check_modules(CURLPP REQUIRED curlpp)
+MESSAGE(STATUS "cURLpp_DIR: " ${CURLPP_DIR})
 ################################################
 ## Manage our compiler and linker flags
 ################################################
@@ -239,7 +260,7 @@ if(BUILD_EXE_VIEWER)
   if(NOT (UBUNTU_VERSION VERSION_LESS "16.04"))
     set(CPACK_DEBIAN_PACKAGE_DEPENDS
       "${CPACK_DEBIAN_PACKAGE_DEPENDS},
-       libvtk6-dev,
+       libvtk5-dev,
        libpcl1.7,
        libopencv-highgui-dev,
        libopencv-contrib-dev")
@@ -247,6 +268,8 @@ if(BUILD_EXE_VIEWER)
     set(CPACK_DEBIAN_PACKAGE_DEPENDS
       "${CPACK_DEBIAN_PACKAGE_DEPENDS},
        libvtk5.8,
+        libpcl-io-1.7,
+	libpcl-1.7,
        libpcl-visualization-1.7,
        libpcl-common-1.7,
        libopencv-highgui2.4,

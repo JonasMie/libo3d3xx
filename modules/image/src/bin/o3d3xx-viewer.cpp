@@ -19,11 +19,17 @@
 #include <memory>
 #include <string>
 #include <opencv2/opencv.hpp>
+#include <pcl/io/pcd_io.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include "o3d3xx_camera.h"
 #include "o3d3xx_framegrabber.h"
 #include "o3d3xx_image.h"
+#include <ctime>
 
+#include <fstream>
+
+
+  int camera_id;
 //-------------------------------------------------------------
 // Quick and dirty viewer application to visualize the various libo3d3xx images
 // -- leverages the built-in PCL and OpenCV visualization infrastructure.
@@ -37,10 +43,37 @@ public:
       description_(descr)
   {}
 
+    float change_threshold = 0.952;
+
   void Run()
   {
     int win_w = 800;
     int win_h = 600;
+
+    int noChangeCount = 10;
+    cv::Mat CurrMat;		//Current Matrix (t=0)
+    cv::Mat last1Mat;		//t-1 Matrix
+    cv::Mat last2Mat;		//t-2 Matrix
+    cv::Mat refMat;		//Reference Matrix
+    cv::Mat SubMat;		//Subtract Matrix = |CurrMat - FolloMat|
+    cv::Mat SubRefMat;		//Subtract Temp Matrix = |CurrMat - TempMat|
+    cv::Mat XYZMat;
+    cv::Mat MeanMat;
+    std::string SuMa;
+    std::string XyzMa;
+    int check = 0;
+    int check2 = 0;
+    int countloop = 0; 		//Counting 'No Change' loops
+    bool change = false;
+    bool tempchange = false;	
+
+    int frameCount = 0;
+    std::string path = "/home/pi/Desktop/pactrisPro/pcd/";
+  
+
+
+    SuMa = "SuMa.csv";
+    XyzMa = "XYZMatrix.csv";
 
     o3d3xx::FrameGrabber::Ptr fg =
       std::make_shared<o3d3xx::FrameGrabber>(this->cam_);
@@ -100,14 +133,25 @@ public:
     cv::Mat amp_colormap_img;
     cv::Mat raw_amp_colormap_img;
 
+
     bool is_first = true;
+    bool is_second = true;
     while (! pclvis_->wasStopped())
       {
+	
+	
         pclvis_->spinOnce(100);
         if (! fg->WaitForFrame(buff.get(), 500))
           {
             continue;
           }
+	
+	
+	
+	// aktuelle matrix in variable speichern
+
+	CurrMat = buff->DepthImage();
+
 
         //------------
         // Point cloud
@@ -119,11 +163,81 @@ public:
           {
             is_first = false;
             pclvis_->addPointCloud(buff->Cloud(), color_handler, "cloud");
+	    CurrMat.copyTo(refMat);
+	    CurrMat.copyTo(last2Mat);
+
+	    // Initial pcd
+	    this->savePCD(path, camera_id, *(buff->Cloud()));
+
           }
+	else if (is_second){
+	   is_second = false;
+	   CurrMat.copyTo(last1Mat);
+	}
         else
           {
-            pclvis_->updatePointCloud(buff->Cloud(), color_handler, "cloud");
-          }
+
+	// methode aufrufen
+	MeanMat = (CurrMat + last1Mat + last2Mat)/ 3.0f;
+	SubMat = MeanMat - CurrMat;  //  |MeanMatrix - FollowingMatrix| = SubtractMatrix
+	
+	
+	SubRefMat = refMat - MeanMat; // |RefMatrix - MeanMatrix| = SubtractMatrix
+
+        pclvis_->updatePointCloud(buff->Cloud(), color_handler, "cloud");
+
+
+	// aktuelle matrix in global var speichern
+	
+	last1Mat.copyTo(last2Mat);
+	CurrMat.copyTo(last1Mat);
+
+	std::cout<< "Check current and mean matrix" << std::endl;;
+	change = ChangeDetection(SubMat);
+	
+	std::cout<< "Check current and ref matrix" << std::endl;;
+	tempchange = ChangeDetection(SubRefMat);
+
+	
+	if(change)
+	{	
+		countloop = 0;
+		std::cout<< "-------------------------------" << std::endl << std::endl;;
+		std::cout<< "Something is changing !!!" << std::endl << std::endl;
+		std::cout<< "-------------------------------" << std::endl;
+		
+	}
+	else
+	{	
+		countloop++;
+		std::cout<< "-------------------------------" << std::endl << std::endl;;
+		std::cout<< "NO change -> " << countloop << std::endl << std::endl;
+		std::cout<< "-------------------------------" << std::endl;
+				
+				/*
+				if (countloop%10==0){
+				take image from pycam
+						Py_SetProgramName("snapshot.py");
+						Py_Initialize();
+						FILE* file = fopen("/home/pi/snapshot.py", "r");
+						PyRun_SimpleFile(file, "/home/pi/snapshot.py");
+						Py_Finalize();
+				system("raspistill -o /home/pi/snapshots/test1.jpg");
+				}
+				*/
+	}
+
+	if(countloop == noChangeCount && tempchange == true) 	// if there is 3 times no changes in front of 3d cam -> snapshot
+	{
+		std::cout<< "*******************************" << std::endl << std::endl;;
+		std::cout<< "Snapshot" << std::endl << std::endl;
+		std::cout<< "*******************************" << std::endl;
+		CurrMat.copyTo(refMat);
+		
+		this->savePCD(path, camera_id, *(buff->Cloud()));
+		
+	}
+	}       
 
         //------------
         // 2D images
@@ -189,6 +303,24 @@ public:
 
         cv::imshow(this->description_, display_img);
 
+
+/*-----Mein Code
+		
+	XYZMat = buff->XYZImage();
+
+	cv::FileStorage fs2("xyz_file.yml", cv::FileStorage::WRITE);
+	fs2 << "yourMatxyz" << XYZMat;
+
+	SaveMatToCsv(XYZMat, XyzMa);
+
+	SaveMatToCsv(SubMat, SuMa);
+	
+	cv::FileStorage fsdep("Depth_file.yml", cv::FileStorage::WRITE);
+	fsdep << "yourMatDe" << buff->DepthImage();
+
+//-----Ende*/
+
+
         // `ESC', `q', or `Q' to exit
         retval = cv::waitKey(33);
         if ((retval == 27) || (retval == 113) || (retval == 81))
@@ -198,10 +330,83 @@ public:
       } // end: while (...)
   }
 
+
+
+
+
 private:
   o3d3xx::Camera::Ptr cam_;
   std::string description_;
 
+    cv::Mat computeMeanMat(cv::Mat mat0, cv::Mat mat1, cv::Mat mat2){
+
+	cv::Mat sumMat = mat0+mat1+mat2;
+	return sumMat/3.0f;
+    }
+
+    int MyCompare(cv::Mat img1, cv::Mat img2)
+    {
+	int counteq = 0;
+
+	for(int y=0; y != img1.cols; y++) //cols
+	  {
+
+		for(int x=0; x != img1.rows; x++) //rows
+		  {
+
+			if(img1.at<ushort>(x,y)==img2.at<ushort>(x,y))
+			  {	
+				counteq++;
+			  }
+	  	  }			
+	  }			
+
+	return counteq;
+    }
+
+
+    bool ChangeDetection(cv::Mat img1)
+    {
+	double counteq = 0;
+	ushort distance = 100;
+	double allpix = 23232;		//Number of all pixels
+
+
+	for(int y=0; y != img1.cols; y++)
+	  {
+		for(int x=0; x != img1.rows; x++) //rows
+		  {
+			if(distance >= img1.at<ushort>(x,y)){counteq++;}			
+	  	  }	
+	  }
+
+	if((counteq/allpix) > change_threshold)
+
+	{	
+	//	std::cout << "False_Test: " << counteq/allpix * 100 << "%" << std::endl;
+		return false;
+	}
+	else		
+	{
+	//	std::cout << "True_Test: " << counteq/allpix * 100 << "%" << std::endl;
+		return true;
+	}	
+    }
+
+
+	void SaveMatToCsv(cv::Mat matrix, std::string filename){
+		ofstream outputFile(filename);
+		outputFile << format(matrix,"CSV") << std::endl;
+		outputFile.close();
+	}
+
+	void savePCD(std::string path, int camera_id, pcl::PointCloud<o3d3xx::PointT>& cloud ){
+		std::cout << "Saving file to point_cloud.pcd" << std::endl;
+		std::time_t ts = std::time(0);
+		std::stringstream ss;
+		ss << "/home/pi/Desktop/pactrisPro/pcd/" <<camera_id <<"/" << ts << "_.pcd";
+		pcl::io::savePCDFileASCII(ss.str(), cloud);
+	}
 }; // end: class O3DViewer
 
 //-------------------------------------------------------------
@@ -217,6 +422,8 @@ int main(int argc, const char **argv)
   std::string password;
   std::string descr("o3d3xx Viewer");
 
+ // typedef Vec<short, 3> Vec3s;
+
   try
     {
       //---------------------------------------------------
@@ -227,6 +434,9 @@ int main(int argc, const char **argv)
         {
           return 0;
         }
+
+camera_id = camera_ip.back() - '0';
+std::cout << "CAMERA ID: " << camera_id << std::endl;
 
       //---------------------------------------------------
       // Initialize the camera
