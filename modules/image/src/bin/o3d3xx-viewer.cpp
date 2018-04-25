@@ -43,14 +43,14 @@ public:
       description_(descr)
   {}
 
-    float change_threshold = 0.952;
+    float change_threshold = 0.98; //0.952;
 
   void Run()
   {
     int win_w = 800;
     int win_h = 600;
 
-    int noChangeCount = 10;
+    int noChangeCount = 5;
     cv::Mat CurrMat;		//Current Matrix (t=0)
     cv::Mat last1Mat;		//t-1 Matrix
     cv::Mat last2Mat;		//t-2 Matrix
@@ -368,7 +368,7 @@ private:
     bool ChangeDetection(cv::Mat img1)
     {
 	double counteq = 0;
-	ushort distance = 100;
+	ushort distance = 40;
 	double allpix = 23232;		//Number of all pixels
 
 
