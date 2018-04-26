@@ -30,6 +30,7 @@
 
 
   int camera_id;
+  float threshold= 0.01;
 //-------------------------------------------------------------
 // Quick and dirty viewer application to visualize the various libo3d3xx images
 // -- leverages the built-in PCL and OpenCV visualization infrastructure.
@@ -43,7 +44,7 @@ public:
       description_(descr)
   {}
 
-    float change_threshold = 0.98; //0.952;
+    float threshold = 0.999; 
 
   void Run()
   {
@@ -165,6 +166,7 @@ public:
             pclvis_->addPointCloud(buff->Cloud(), color_handler, "cloud");
 	    CurrMat.copyTo(refMat);
 	    CurrMat.copyTo(last2Mat);
+		
 
 	    // Initial pcd
 	    this->savePCD(path, camera_id, *(buff->Cloud()));
@@ -343,24 +345,26 @@ private:
 	cv::Mat sumMat = mat0+mat1+mat2;
 	return sumMat/3.0f;
     }
-
-    int MyCompare(cv::Mat img1, cv::Mat img2)
+	double allpix = 0;
+    
+int MyCompare(cv::Mat img1, cv::Mat img2)
     {
 	int counteq = 0;
-
+	allpix = 0;
 	for(int y=0; y != img1.cols; y++) //cols
 	  {
 
 		for(int x=0; x != img1.rows; x++) //rows
 		  {
-
-			if(img1.at<ushort>(x,y)==img2.at<ushort>(x,y))
-			  {	
-				counteq++;
-			  }
+			if((img1.at<ushort>(x,y)>0)&&(img2.at<ushort>(x,y)>0)) 
+				if(img1.at<ushort>(x,y)==img2.at<ushort>(x,y))
+			  	{	
+					counteq++;
+					allpix++;
+			  	}
 	  	  }			
 	  }			
-
+	std::cout<<"Allpix: "<<allpix<<std::endl;
 	return counteq;
     }
 
@@ -369,18 +373,20 @@ private:
     {
 	double counteq = 0;
 	ushort distance = 40;
-	double allpix = 23232;		//Number of all pixels
+	//double allpix = 23232;		//Number of all pixels
 
 
 	for(int y=0; y != img1.cols; y++)
 	  {
+
 		for(int x=0; x != img1.rows; x++) //rows
 		  {
+
 			if(distance >= img1.at<ushort>(x,y)){counteq++;}			
 	  	  }	
 	  }
 
-	if((counteq/allpix) > change_threshold)
+	if((counteq/allpix) > threshold)
 
 	{	
 	//	std::cout << "False_Test: " << counteq/allpix * 100 << "%" << std::endl;
@@ -404,7 +410,7 @@ private:
 		std::cout << "Saving file to point_cloud.pcd" << std::endl;
 		std::time_t ts = std::time(0);
 		std::stringstream ss;
-		ss << "/home/pi/Desktop/pactrisPro/pcd/" <<camera_id <<"/" << ts << "_.pcd";
+		ss << "/home/pi/Desktop/pactrisPro/pcd/" <<camera_id <<"/" << ts << ".pcd";
 		pcl::io::savePCDFileASCII(ss.str(), cloud);
 	}
 }; // end: class O3DViewer
@@ -437,6 +443,24 @@ int main(int argc, const char **argv)
 
 camera_id = camera_ip.back() - '0';
 std::cout << "CAMERA ID: " << camera_id << std::endl;
+
+
+
+// Get Threshold
+
+std::stringstream ss;
+ss << "CAM" <<camera_id <<"_TS";
+std::string s= ss.str();
+char const* tmp = std::getenv(s.c_str());
+
+if ( tmp == NULL ) {
+    std::cout << ss.str() << " not given" << std::endl;
+} else {
+    std::string ts_string( tmp );
+    threshold = std::stof(ts_string);
+}
+std::cout << "Setting threshold for camera " << camera_id << " to " << threshold << std::endl;
+
 
       //---------------------------------------------------
       // Initialize the camera
