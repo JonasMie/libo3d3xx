@@ -30,7 +30,8 @@
 
 
   int camera_id;
-  float threshold= 0.01;
+  float threshold= 0.99;
+  float distance = 40;
 //-------------------------------------------------------------
 // Quick and dirty viewer application to visualize the various libo3d3xx images
 // -- leverages the built-in PCL and OpenCV visualization infrastructure.
@@ -44,7 +45,6 @@ public:
       description_(descr)
   {}
 
-    float threshold = 0.999; 
 
   void Run()
   {
@@ -54,7 +54,7 @@ public:
     int noChangeCount = 5;
     cv::Mat CurrMat;		//Current Matrix (t=0)
     cv::Mat last1Mat;		//t-1 Matrix
-    cv::Mat last2Mat;		//t-2 Matrix
+    //cv::Mat last2Mat;		//t-2 Matrix
     cv::Mat refMat;		//Reference Matrix
     cv::Mat SubMat;		//Subtract Matrix = |CurrMat - FolloMat|
     cv::Mat SubRefMat;		//Subtract Temp Matrix = |CurrMat - TempMat|
@@ -136,7 +136,7 @@ public:
 
 
     bool is_first = true;
-    bool is_second = true;
+
     while (! pclvis_->wasStopped())
       {
 	
@@ -165,33 +165,30 @@ public:
             is_first = false;
             pclvis_->addPointCloud(buff->Cloud(), color_handler, "cloud");
 	    CurrMat.copyTo(refMat);
-	    CurrMat.copyTo(last2Mat);
-		
+	    CurrMat.copyTo(last1Mat);
 
 	    // Initial pcd
 	    this->savePCD(path, camera_id, *(buff->Cloud()));
 
           }
-	else if (is_second){
-	   is_second = false;
-	   CurrMat.copyTo(last1Mat);
-	}
+	
         else
           {
 
 	// methode aufrufen
-	MeanMat = (CurrMat + last1Mat + last2Mat)/ 3.0f;
-	SubMat = MeanMat - CurrMat;  //  |MeanMatrix - FollowingMatrix| = SubtractMatrix
+	//MeanMat = (CurrMat + last1Mat + last2Mat)/ 3.0f;
+	SubMat = CustomDiffMat(CurrMat, last1Mat);
+	//SubMat = MeanMat - CurrMat;  //  |MeanMatrix - FollowingMatrix| = SubtractMatrix
 	
 	
-	SubRefMat = refMat - MeanMat; // |RefMatrix - MeanMatrix| = SubtractMatrix
+	SubRefMat = CustomDiffMat(refMat,CurrMat); // |RefMatrix - MeanMatrix| = SubtractMatrix
 
         pclvis_->updatePointCloud(buff->Cloud(), color_handler, "cloud");
 
 
 	// aktuelle matrix in global var speichern
 	
-	last1Mat.copyTo(last2Mat);
+	//last1Mat.copyTo(last2Mat);
 	CurrMat.copyTo(last1Mat);
 
 	std::cout<< "Check current and mean matrix" << std::endl;;
@@ -368,13 +365,43 @@ int MyCompare(cv::Mat img1, cv::Mat img2)
 	return counteq;
     }
 
+cv::Mat CustomDiffMat(cv::Mat CurrMat, cv::Mat last1Mat){
+	cv::Mat diffMat = CurrMat.clone();
+	int count = 0;
+	for(int y=0; y<CurrMat.cols; y++){
+		for (int x=0; x<CurrMat.rows; x++){
+			bool zeroValue = false;
 
-    bool ChangeDetection(cv::Mat img1)
+			if(CurrMat.at<ushort>(x,y)==0){
+				zeroValue=true;
+			}
+			if(last1Mat.at<ushort>(x,y)==0){
+				zeroValue=true;
+			}
+			
+			if(!zeroValue){
+				if(CurrMat.at<ushort>(x,y) >= last1Mat.at<ushort>(x,y)){
+					diffMat.at<ushort>(x,y)= CurrMat.at<ushort>(x,y)-last1Mat.at<ushort>(x,y);
+				} else {
+					diffMat.at<ushort>(x,y)= last1Mat.at<ushort>(x,y)-CurrMat.at<ushort>(x,y);
+				}
+				
+
+			} else {
+				count++;
+				diffMat.at<ushort>(x,y) = 999;
+			}
+		}
+	}
+//std::cout << "dif mat done, " << count << " zero values" << std::endl;
+	return diffMat;
+   }
+
+bool ChangeDetection(cv::Mat img1)
     {
-	double counteq = 0;
-	ushort distance = 40;
-	//double allpix = 23232;		//Number of all pixels
 
+	double counteq = 0;
+	double allpix = 0;		//Number of all pixels
 
 	for(int y=0; y != img1.cols; y++)
 	  {
@@ -382,10 +409,16 @@ int MyCompare(cv::Mat img1, cv::Mat img2)
 		for(int x=0; x != img1.rows; x++) //rows
 		  {
 
-			if(distance >= img1.at<ushort>(x,y)){counteq++;}			
+			if(img1.at<ushort>(x,y)!=999){
+				allpix++;
+				if(distance >= img1.at<ushort>(x,y)){
+					counteq++;
+				}			
+			}
 	  	  }	
 	  }
-
+	
+	std::cout<< "Change percentage: " << (counteq/allpix) <<std::endl;
 	if((counteq/allpix) > threshold)
 
 	{	
@@ -460,6 +493,21 @@ if ( tmp == NULL ) {
     threshold = std::stof(ts_string);
 }
 std::cout << "Setting threshold for camera " << camera_id << " to " << threshold << std::endl;
+
+
+// Get distance value
+std::stringstream ss1;
+ss1 << "CAM" <<camera_id <<"_DIST";
+std::string s1= ss1.str();
+char const* tmp1 = std::getenv(s1.c_str());
+
+if ( tmp1 == NULL ) {
+    std::cout << ss1.str() << " not given" << std::endl;
+} else {
+    std::string dist_string( tmp1 );
+    distance = std::stof(dist_string);
+}
+std::cout << "Setting distance for camera " << camera_id << " to " << distance << std::endl;
 
 
       //---------------------------------------------------
