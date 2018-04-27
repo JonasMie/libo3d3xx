@@ -32,6 +32,7 @@
   int camera_id;
   float threshold= 0.99;
   float distance = 40;
+  int noChangeCount = 10;
 //-------------------------------------------------------------
 // Quick and dirty viewer application to visualize the various libo3d3xx images
 // -- leverages the built-in PCL and OpenCV visualization infrastructure.
@@ -51,7 +52,6 @@ public:
     int win_w = 800;
     int win_h = 600;
 
-    int noChangeCount = 5;
     cv::Mat CurrMat;		//Current Matrix (t=0)
     cv::Mat last1Mat;		//t-1 Matrix
     //cv::Mat last2Mat;		//t-2 Matrix
@@ -509,6 +509,16 @@ if ( tmp1 == NULL ) {
 }
 std::cout << "Setting distance for camera " << camera_id << " to " << distance << std::endl;
 
+// Get no change count
+char const* tmp2 = std::getenv("NCC");
+
+if ( tmp2 == NULL ) {
+    std::cout  << "NoChangeCount (NCC) not given" << std::endl;
+} else {
+    std::string ncc_string( tmp2 );
+    noChangeCount = std::stoi(ncc_string);
+}
+std::cout << "Setting noChangeCount for camera " << camera_id << " to " << noChangeCount << std::endl;
 
       //---------------------------------------------------
       // Initialize the camera
