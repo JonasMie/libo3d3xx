@@ -33,6 +33,7 @@
   float threshold= 0.99;
   float distance = 40;
   int noChangeCount = 10;
+  bool auto_snapshot=true;
 //-------------------------------------------------------------
 // Quick and dirty viewer application to visualize the various libo3d3xx images
 // -- leverages the built-in PCL and OpenCV visualization infrastructure.
@@ -108,6 +109,11 @@ public:
           {
             pclvis_->removeCoordinateSystem();
           }
+	else if (ev.getKeySym() == "s" && ev.keyDown())
+	  {
+	   std::cout << "Manually saving pcd" << std::endl; 
+	   this->savePCD(path, camera_id, *(buff->Cloud()));
+    	  }
       });
 
 
@@ -168,7 +174,9 @@ public:
 	    CurrMat.copyTo(last1Mat);
 
 	    // Initial pcd
-	    this->savePCD(path, camera_id, *(buff->Cloud()));
+	    if(auto_snapshot){
+		    this->savePCD(path, camera_id, *(buff->Cloud()));
+	    }
 
           }
 	
@@ -232,8 +240,9 @@ public:
 		std::cout<< "Snapshot" << std::endl << std::endl;
 		std::cout<< "*******************************" << std::endl;
 		CurrMat.copyTo(refMat);
-		
-		this->savePCD(path, camera_id, *(buff->Cloud()));
+		if (auto_snapshot){
+			this->savePCD(path, camera_id, *(buff->Cloud()));
+		}
 		
 	}
 	}       
@@ -519,6 +528,19 @@ if ( tmp2 == NULL ) {
     noChangeCount = std::stoi(ncc_string);
 }
 std::cout << "Setting noChangeCount for camera " << camera_id << " to " << noChangeCount << std::endl;
+
+
+// Get auto snapshot vlaue
+char const* tmp3 = std::getenv("AS");
+
+if ( tmp3 == NULL ) {
+    std::cout  << "Auto Snapshot (AS) not given" << std::endl;
+} else {
+    std::string as_string( tmp3 );
+    auto_snapshot = std::stoi(as_string);
+}
+std::cout << "Setting auto snapshot for camera " << camera_id << " to " << auto_snapshot << std::endl;
+
 
       //---------------------------------------------------
       // Initialize the camera
