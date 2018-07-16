@@ -118,7 +118,7 @@ public:
 		std::stringstream ss;
 		ss << "raspistill -o /home/pi/Desktop/pactrisPro/pcd/" <<camera_id <<"/" << ts << ".jpg";
 		
-		system(ss.str());
+		system(ss.str().c_str());
     	  }
       });
 
@@ -187,7 +187,7 @@ public:
 		std::stringstream ss;
 		ss << "raspistill -o /home/pi/Desktop/pactrisPro/pcd/" <<camera_id <<"/" << ts << ".jpg";
 		
-		system(ss.str());
+		system(ss.str().c_str());
 				
 	    }
 
