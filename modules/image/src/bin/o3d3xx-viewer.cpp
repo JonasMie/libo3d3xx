@@ -176,6 +176,13 @@ public:
 	    // Initial pcd
 	    if(auto_snapshot){
 		    this->savePCD(path, camera_id, *(buff->Cloud()));
+
+		std::time_t ts = std::time(0);
+		std::stringstream ss;
+		ss << "raspistill -o /home/pi/Desktop/pactrisPro/pcd/" <<camera_id <<"/" << ts << ".jpg";
+		
+		system(ss.str());
+				
 	    }
 
           }
